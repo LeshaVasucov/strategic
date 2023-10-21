@@ -31,8 +31,19 @@ class Game_pict() :
         self.image = pygame.transform.scale(image,(w,h))
     def update(self):
         window.blit(self.image, (self.rect.x  ,self.rect.y ))
+turrel_corp = pygame.image.load("turrel_corp.png")
+turrel_gun = pygame.image.load("tank_corp_1.png")
+turrel_bt_pict = pygame.image.load("turrel.png")
+turrel_bt_pict.set_alpha(180)
+turrel_but = Game_pict(win_w - 100 , win_h - 150 , 35,35, turrel_bt_pict)
 bur_list = []
-class bur(GameObject):
+class Button():
+    def __init__(self , x , y ,w ,h ,image ) :
+        self.rect = pygame.Rect(x,y,w,h)
+        self.image = pygame.transform.scale(image, (self.rect.w , self.rect.h))
+    def update(self):
+        window.blit(self.image, (self.rect.x  ,self.rect.y ))
+class Bur(GameObject):
     def __init__(self, x, y, w, h, image):
         super().__init__(x, y, w, h, image)
         bur_list.append(self)
@@ -78,6 +89,20 @@ class bullet(GameObject):
             bullets_group.remove(self)
         window.blit(self.image, (self.rect.x - camera.rect.x  ,self.rect.y - camera.rect.y ))
         #     bullets.remove(self)
+enemy_bullets = pygame.sprite.Group()
+class Enemybullet(GameObject):
+    def __init__(self, x, y, w, h, image , dx ,dy):
+        super().__init__(x, y, w, h, image)
+        self.dx , self.dy = dx , dy
+        enemy_bullets.add(self)
+    def update(self):
+        self.rect.x += self.dx
+        self.rect.y += self.dy
+        window.blit(self.image, (self.rect.x - camera.rect.x  ,self.rect.y - camera.rect.y ))
+        if self.rect.colliderect(base.rect):
+            enemy_bullets.empty()
+            tank1.rect.x = randint(500,1400)
+            tank1.rect.y = randint(500,900)
 class player(GameObject):
     def __init__(self, x, y, w, h,speed ,  image , bul_speed , shoot_cooldown):
         super().__init__(x, y, w, h, image)
@@ -99,26 +124,30 @@ class player(GameObject):
             norm_vect = vect.normalize()*self.bul_speed
             dx , dy = int(norm_vect[0]) , int(norm_vect[1])
             bullet1 = bullet(self.rect.x , self.rect.y , 15,15 ,bullet_pict, dx , dy)
-    def chose(self):
-        x , y = pygame.mouse.get_pos()
-        if pygame.mouse.get_pressed()[0] and bur_but.rect.collidepoint(x , y):
-            self.chose_bur = True
-    def build_bur(self):
-        x , y = pygame.mouse.get_pos()
-        block_bur = bur(x , y , 45 , 45 ,bur_build_pict)
-    def blit(self):
-        if self.chose_bur :
-            x3 , y3 = pygame.mouse.get_pos()
-            print(x3,y3)
-            window.blit(pygame.transform.scale(bur_pict, (45,45)),( x3, y3 ))
-            if pygame.mouse.get_pressed()[0] :
-                for iron in ore_list:
-                    for bur in bur_list :
-                        if iron.rect.collidepoint(x3 + camera.rect.x,y3 + camera.rect.y):
-                            print(x3 , y3 , )
-                            print(x3 + (camera.rect.x - win_w/ 3 - player_1.rect.x ), y3 + camera.rect.y )
-                            block_bur = bur(x3 + camera.rect.x, y3  + camera.rect.y, 45 , 45 ,bur_build_pict)
-                            self.chose_bur = False
+    # def chose(self):
+    #     x , y = pygame.mouse.get_pos()
+    #     if pygame.mouse.get_pressed()[0] and bur_but.rect.collidepoint(x , y):
+    #         self.chose_bur = True
+    # def build_bur(self):
+    #     x , y = pygame.mouse.get_pos()
+    #     block_bur = Bur(x , y , 45 , 45 ,bur_build_pict)
+    # def blit(self):
+    #     if self.chose_bur :
+    #         x3 , y3 = pygame.mouse.get_pos()
+    #         print(x3,y3)
+    #         window.blit(pygame.transform.scale(bur_pict, (45,45)),( x3, y3 ))
+    #         if pygame.mouse.get_pressed()[0] :
+    #             for iron in ore_list:
+
+    #                 if iron.rect.collidepoint(x3 + camera.rect.x,y3 + camera.rect.y):
+    #                     print(x3 , y3 , )
+    #                     print(x3 + (camera.rect.x - win_w/ 3 - player_1.rect.x ), y3 + camera.rect.y )
+    #                     block_bur = Bur(x3 + camera.rect.x, y3  + camera.rect.y, 45 , 45 ,bur_build_pict)
+    #                     for bur in bur_list :
+    #                         if  block_bur != bur :
+    #                             if bur.rect.colliderect(block_bur.rect): 
+    #                                 bur_list.remove(block_bur)
+    #                     self.chose_bur = False
 
         
 
@@ -179,22 +208,27 @@ base_pict = pygame.image.load("base.png")
 base = GameObject(500,500,150,150,base_pict)
 tank_list = []
 class enemy(tank):
-    def __init__(self, x, y, w, h, image, image2, speed , hp):
+    def __init__(self, x, y, w, h, image, image2, speed , hp , bullet_speed):
         super().__init__(x, y, w, h, image, image2, speed)
         self.hp = hp
+        self.bul_speed = bullet_speed
         self.x2, self.y2 = base.rect.x , base.rect.y
         vect = pygame.Vector2(self.x2, self.y2) - pygame.Vector2(self.rect.x , self.rect.y)
         norm_vect = vect.normalize()*self.speed
         self.dx , self.dy = int(norm_vect[0]) , int(norm_vect[1])
+        vect2 = pygame.Vector2(self.dx, self.dy)
+        angle = pygame.Vector2(0, -10).angle_to(vect2)
         self.collide_left = False
         self.collide_right = False
+        self.image_rotated1  = pygame.transform.rotate(self.image1 , -angle )
+        self.image_rotated2 = pygame.transform.rotate(self.image2 , -angle)
         self.collide_up = False
         self.collide_down = False
         self.vect = pygame.Vector2(self.dx , self.dy)
         tank_list.append(self)
     def update(self):
-        window.blit(self.image1, (self.rect.x - (camera.rect.x + camera.speed) ,self.rect.y - (camera.rect.y + camera.speed)))
-        window.blit(self.image2, (self.rect.x - (camera.rect.x + camera.speed) ,self.rect.y - (camera.rect.y + camera.speed)))
+        window.blit(self.image_rotated1, (self.rect.x - (camera.rect.x + camera.speed) ,self.rect.y - (camera.rect.y + camera.speed)))
+        window.blit(self.image_rotated2, (self.rect.x - (camera.rect.x + camera.speed) ,self.rect.y - (camera.rect.y + camera.speed)))
     def hp_check(self) :
         if self.hp <= 0 :
             tank_group.remove(self) 
@@ -217,6 +251,7 @@ class enemy(tank):
         norm_vect = vect.normalize()*self.speed
         self.dx , self.dy = int(norm_vect[0]) , int(norm_vect[1])
         return self.dx , self.dy
+
     def try_left (self):
         self.rect.x -= 8
         if not pygame.sprite.groupcollide(wall_group , tank_group , False , False) :
@@ -242,22 +277,87 @@ class enemy(tank):
                 self.rect.y += self.dy
             
             vect2 = pygame.Vector2(self.dx , self.dy)
-            angle = vect1.angle_to(vect2)
-            # self.image1 = pygame.transform.rotate(self.image1 , angle)
-            # self.image2 = pygame.transform.rotate(self.image2 , angle)
-            print(self.rect.x , self.rect.y)
+            angle = pygame.Vector2(0, -10).angle_to(vect2)
             print(angle)
-        else :
-            self.rect.x = randint(0,win_w)
-            self.rect.y = randint(0,win_h)
-            if pygame.sprite.groupcollide(tank_group , wall_group , False , False):
-                pass
+            self.image_rotated1 = pygame.transform.rotate(self.image1 , -angle)
+            self.image_rotated2 = pygame.transform.rotate(self.image2 , -angle)
+
+
+
+
+        print(pygame.Vector2(base.rect.x - self.rect.x , base.rect.y - self.rect.y).length())
+    def shoot(self) :
+            x2, y2 = base.rect.centerx , base.rect.centery 
+            print(x2 , y2)
+            vect = pygame.Vector2(x2, y2) - pygame.Vector2(self.rect.x , self.rect.y)
+            norm_vect = vect.normalize()*self.bul_speed
+            dx , dy = int(norm_vect[0]) , int(norm_vect[1])
+            bullet = Enemybullet(self.rect.centerx , self.rect.centery , 15,15 ,bullet_pict, dx , dy) 
+        
+    def behavior(self):
+        if pygame.Vector2(base.rect.centerx - self.rect.x , base.rect.centery - self.rect.y).length() > 200 :
+            self.enemy_move()
+        else : 
+            self.shoot()
+turrel_list = []
+class Turrel(GameObject):
+    def __init__(self, x, y, w, h, image , image2):
+        super().__init__(x, y, w, h, image)
+        self.image2 = pygame.transform.scale(image2 , (self.rect.w , self.rect.h))
+        turrel_list.append(self)
+    def update(self):
+        window.blit(self.image, (self.rect.x - camera.rect.x  ,self.rect.y - camera.rect.y ))
+        window.blit(self.image2, (self.rect.x - camera.rect.x  ,self.rect.y - camera.rect.y ))
+class Build():
+    def __init__(self):
+        self.chose_bur = False
+        self.chose_turrel = False
+    def chose(self):
+        x , y = pygame.mouse.get_pos()
+        if pygame.mouse.get_pressed()[0] and bur_but.rect.collidepoint(x , y):
+            self.chose_bur = True
+        if pygame.mouse.get_pressed()[0] and turrel_but.rect.collidepoint(x , y):
+            self.chose_turrel = True
+    def blit(self):
+        if self.chose_bur :
+            x3 , y3 = pygame.mouse.get_pos()
+            print(x3,y3)
+            window.blit(pygame.transform.scale(bur_pict, (45,45)),( x3, y3 ))
+            if pygame.mouse.get_pressed()[0] :
+                for iron in ore_list:
+
+                    if iron.rect.collidepoint(x3 + camera.rect.x,y3 + camera.rect.y):
+                        print(x3 , y3 , )
+                        print(x3 + (camera.rect.x - win_w/ 3 - player_1.rect.x ), y3 + camera.rect.y )
+                        block_bur = Bur(x3 + camera.rect.x, y3  + camera.rect.y, 45 , 45 ,bur_build_pict)
+                        for bur in bur_list :
+                            if  block_bur != bur :
+                                if bur.rect.colliderect(block_bur.rect): 
+                                    bur_list.remove(block_bur)
+                        self.chose_bur = False
+        if self.chose_turrel :
+            x3 , y3 = pygame.mouse.get_pos()
+            print(x3,y3)
+            window.blit(pygame.transform.scale(turrel_bt_pict, (45,45)),( x3, y3 ))
+            if pygame.mouse.get_pressed()[0] :
+                        turrel = Turrel(x3 + camera.rect.x, y3  + camera.rect.y, 45 , 45 ,turrel_corp , turrel_gun)
+                        # for tur in turrel_list :
+                        #     if  tur != turrel:
+                        #         if tur.rect.colliderect(turrel.rect): 
+                        #             turrel_list.remove(turrel)
+                        
+
+        
 bl_winter_pict_1 = pygame.image.load("block_winter_3.png")
 bl_winter_pict_1 = bl_winter_pict_1.convert_alpha()
 bl_winter_pict_2 = pygame.image.load("block_winter_1.png")
 bl_winter_pict_2 = bl_winter_pict_2.convert_alpha()
 bl_winter_pict_3 = pygame.image.load("block_winter_4.png")
 bl_winter_pict_3 = bl_winter_pict_3.convert_alpha()
+green_pict = pygame.image.load("green.png")
+green_pict.set_alpha(65)
+red_pict = pygame.image.load("red.png")
+red_pict.set_alpha(65)
 bur_pict = pygame.image.load("bur.png")
 bur_pict.set_alpha(65)
 bur_build_pict = pygame.image.load("bur_bl.png")
@@ -274,7 +374,7 @@ bullet_pict = pygame.image.load("bullet.png")
 font = pygame.font.SysFont("Arial",30)
 font1 = pygame.font.SysFont("Arial",20)
 player_1 = player(400,500,50,50,5 , player_pict , 5 , 50 ) 
-tank1 = enemy(800,500,50,50,tank_track1 , tank_corp1 , 5, 3)
+tank1 = enemy(800,500,50,50,tank_track1 , tank_corp1 , 5, 3 , 5)
 game = True
 blocks = []
 x,y = 0,0
@@ -307,11 +407,18 @@ for bl in lvl1 :
     x = 0       
 camera = Camera(0,0,win_w,win_h , 4 , player_1)
 start_time = time()
-start = True
+start = False
+bl = Build()
+start_btn_pict = pygame.image.load("start.png")
+start_btn = Button(win_w / 2 - 70 , win_h/ 2 - 50 , 70, 50 , start_btn_pict)
 while game  :
     if not start :
         window.fill((255,255,255))
-
+        start_btn.update()
+        if pygame.mouse.get_pressed()[0] :
+            x4 , y4 = pygame.mouse.get_pos()
+            if start_btn.rect.collidepoint(x4 , y4) :
+                start = True
     if start :
         game_time = int(time() - start_time)
         time_lb = font.render(f"Час{game_time}", True , (255,255,255))
@@ -322,22 +429,23 @@ while game  :
         for bur1 in bur_list:
             bur1.update()
             bur1.g_iron()
+        for turrel in turrel_list :
+            turrel.update()
         base.update()
-        player_1.update()
-        player_1.chose()
-        player_1.blit()
-        player_1.move()
-        player_1.shoot()
+        enemy_bullets.update()
         for tank1 in tank_list :
             tank1.update()
-            tank1.enemy_move()
+            tank1.behavior()
             tank1.hp_check()
         window.blit(info_pict , (win_w/2 - 200 , 0))
         iron_lb = font1.render(f"Заліза {iron_count}", True , (255,255,255))
+        
         window.blit(iron_pict , (win_w/2 - 109 , 20))
         window.blit(iron_lb , (win_w / 2 - 90 , 15))
         window.blit(time_lb,(win_w / 2 - 15 ,100))
         window.blit(pygame.transform.rotate(info_pict , 180), (win_w - 300 , win_h - 170))
+        window.blit(info_pict ,( win_w - win_w/45 * 7 , win_h - 310))
+        turrel_but.update()
         bur_but.update()
         #tank_group.enemy_move()
     # print(tank2.rect.x , tank2.rect.y)
@@ -345,6 +453,11 @@ while game  :
         # for bullet1 in bullets :
         #     bullet1.move()
         #     bullet1.update()
+        player_1.update()
+        player_1.move()
+        player_1.shoot()
+        bl.chose()
+        bl.blit()
     for event in pygame.event.get():
         if event.type == pygame.QUIT :
             game = False
